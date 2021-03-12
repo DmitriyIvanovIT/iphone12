@@ -1,9 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
+    const crossSellList = document.querySelector('.cross-sell__list'),
+    modal = document.querySelector('.modal'),
+    cardDetailsTitle = document.querySelector('.card-details__title'),
+    modalSubtitle = document.querySelector('.modal__subtitle');
+
+    crossSellList.textContent = '';
+
+    const getData = async () => await fetch('./cross-sell-dbase/dbase.json');
+
     const tabs = () => {
         const cardDetailChange = document.querySelectorAll('.card-detail__change'),
-            cardDetailsTitle = document.querySelector('.card-details__title'),
             cardImage = document.querySelector('.card__image_item'),
             descriptionMemory = document.querySelector('.description__memory'),
             cardDetailsPrice = document.querySelector('.card-details__price');
@@ -39,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     cardDetailChange[i].classList.add('active');
                     cardDetailsTitle.textContent = data[i].name;
-                    document.querySelector('.modal__title').textContent = data[i].name;
                     cardImage.setAttribute('src', data[i].img);
                     cardDetailsPrice.textContent = `${data[i].price}₽`;
                     descriptionMemory.textContent = `Встроенная память (ROM) ${data[i].memoryROM} ГБ`;
@@ -95,17 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
     },
-    modal = () => {
+    modalFunc = () => {
         const cardDetailsButtonBuy = document.querySelector('.card-details__button_buy'),
-        cardDetailsButtonDelivery = document.querySelector('.card-details__button_delivery'),
-        modal = document.querySelector('.modal'),
-        modalSubtitle = document.querySelector('.modal__subtitle');
+        cardDetailsButtonDelivery = document.querySelector('.card-details__button_delivery');
 
-        const openModal = text => {
-            modalSubtitle.textContent = text;
-            modal.classList.add('open');
-        },
-        closeModal = e => {
+        const closeModal = e => {
             const target = e.target;
 
             if (target === modal || target.classList.contains('modal__close') || e.code === 'Escape') {
@@ -114,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         cardDetailsButtonBuy.addEventListener('click', () => {
-            openModal('Оплата')
+            openModal('Оплата', cardDetailsTitle.textContent);
         });
 
         cardDetailsButtonDelivery.addEventListener('click', () => {
@@ -124,9 +125,52 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.addEventListener('click', closeModal);
 
         document.body.addEventListener('keydown', closeModal);
+    }, openModal = (text, title) => {
+        modalSubtitle.textContent = text;
+        document.querySelector('.modal__title').textContent = title;
+        modal.classList.add('open');
     };
 
     tabs();
     accordion();
-    modal();
+    modalFunc();
+
+    getData()
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`Ошибка ${res.status}`);
+            }
+
+            return res.json();
+        })
+        .then(data => {
+            data.forEach(item => {
+                crossSellList.insertAdjacentHTML('beforeend', `
+                <li id="${item.id}">
+                    <article class="cross-sell__item">
+                        <img class="cross-sell__image" src="${item.photo}" alt="${item.name}">
+                        <h3 class="cross-sell__title">${item.name}</h3>
+                        <p class="cross-sell__price">${item.price}₽</p>
+                        <div class="button button_buy cross-sell__button">Купить</div>
+                    </article>
+                </li>
+                `);
+            });
+
+            const crossSellItem = document.querySelectorAll('.cross-sell__item');
+
+            return crossSellItem;
+        })
+        .then(sellItems => {
+            sellItems.forEach(item => 
+                item.addEventListener('click', e => {
+                    const target = e.target;
+    
+                    if (target.classList.contains('cross-sell__button')) {
+                        openModal('Оплатить', item.querySelector('.cross-sell__title').textContent);
+                    }
+                })
+            )
+        })
+        .catch(error => console.error(error));
 });
